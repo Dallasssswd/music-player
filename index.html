@@ -1,0 +1,419 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>TubeTunes</title>
+<style>
+:root { color-scheme: dark; }
+body{
+margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+background:#0b0f16; color:#e7e9ee;
+}
+header{
+padding:16px 18px; display:flex; align-items:center; justify-content:space-between;
+border-bottom:1px solid rgba(255,255,255,.08);
+position:sticky; top:0; background:#0b0f16cc; backdrop-filter: blur(8px);
+}
+.brand{ font-weight:800; letter-spacing:.2px; }
+.sub{ opacity:.7; font-size:12px; }
+
+.wrap{ max-width:1100px; margin:0 auto; padding:18px; display:grid; gap:16px;
+grid-template-columns: 1.15fr .85fr;
+}
+@media (max-width: 900px){
+.wrap{ grid-template-columns: 1fr; }
+}
+
+.card{
+background:#111827; border:1px solid rgba(255,255,255,.08);
+border-radius:14px; overflow:hidden;
+box-shadow: 0 12px 30px rgba(0,0,0,.35);
+}
+.cardPad{ padding:14px; }
+
+#playerShell{ aspect-ratio: 16/9; background:#000; }
+#player{ width:100%; height:100%; }
+
+.row{ display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+input{
+width: min(680px, 100%); padding: 12px 12px; border-radius:10px;
+border:1px solid rgba(255,255,255,.14); background:#0b1220; color:#e7e9ee;
+outline:none;
+}
+input:focus{ border-color: rgba(255,255,255,.28); }
+
+button{
+padding:10px 12px; border-radius:10px; border:1px solid rgba(255,255,255,.14);
+background:#0b1220; color:#e7e9ee; cursor:pointer;
+}
+button:hover{ border-color: rgba(255,255,255,.28); }
+button.primary{ background:#1f2937; }
+
+.now{
+display:grid; grid-template-columns: 92px 1fr; gap:12px; align-items:center;
+margin-top:12px;
+}
+.thumb{
+width:92px; height:92px; border-radius:12px; object-fit:cover;
+border:1px solid rgba(255,255,255,.12);
+background:#0b1220;
+}
+.title{ font-weight:700; line-height:1.15; }
+.meta{ opacity:.75; font-size:12px; margin-top:6px; }
+
+.barRow{ display:flex; gap:10px; align-items:center; margin-top:10px; }
+.time{ font-variant-numeric: tabular-nums; font-size:12px; opacity:.8; width:54px; text-align:center; }
+.progress{
+flex:1; height:10px; border-radius:999px; background:#0b1220;
+border:1px solid rgba(255,255,255,.12); overflow:hidden;
+cursor:pointer;
+}
+.fill{ height:100%; width:0%; background:#e7e9ee; opacity:.9; }
+
+.queueHeader{ display:flex; justify-content:space-between; align-items:center; }
+ul{ list-style:none; padding:0; margin:10px 0 0 0; display:grid; gap:8px; }
+li{
+display:grid; grid-template-columns: 42px 1fr auto; gap:10px; align-items:center;
+padding:10px; border-radius:12px;
+border:1px solid rgba(255,255,255,.08); background:#0b1220;
+}
+li:hover{ border-color: rgba(255,255,255,.2); }
+.qthumb{ width:42px; height:42px; border-radius:9px; object-fit:cover; background:#000; }
+.qtitle{ font-size:13px; font-weight:650; line-height:1.15; }
+.qid{ font-size:11px; opacity:.7; margin-top:3px; }
+.pill{
+font-size:11px; opacity:.8; border:1px solid rgba(255,255,255,.14);
+padding:4px 8px; border-radius:999px;
+}
+.danger{ opacity:.8; }
+.help{ font-size:12px; opacity:.7; margin-top:10px; line-height:1.35; }
+a{ color:inherit; }
+</style>
+</head>
+<body>
+<header>
+<div>
+<div class="brand">TubeTunes</div>
+<div class="sub">YouTube player for ChromeOS (queue • save • shortcuts)</div>
+</div>
+<div class="sub">
+Shortcuts: <b>Space</b> play/pause • <b>N</b> next • <b>←/→</b> seek
+</div>
+</header>
+
+<main class="wrap">
+<section class="card">
+<div id="playerShell">
+<div id="player"></div>
+</div>
+
+<div class="cardPad">
+<div class="row">
+<input id="inp" placeholder="Paste a YouTube link or ID (11 chars). Example: https://youtu.be/dQw4w9WgXcQ" />
+<button class="primary" id="btnPlay">Play now</button>
+<button id="btnAdd">Add</button>
+<button id="btnToggle">Play/Pause</button>
+<button id="btnNext">Next</button>
+</div>
+
+<div class="now">
+<img id="nowThumb" class="thumb" alt="thumbnail" />
+<div>
+<div id="nowTitle" class="title">—</div>
+<div id="nowMeta" class="meta">—</div>
+
+<div class="barRow">
+<div id="tCur" class="time">0:00</div>
+<div id="progress" class="progress" title="Click to seek">
+<div id="fill" class="fill"></div>
+</div>
+<div id="tDur" class="time">0:00</div>
+
+<span class="pill">Vol</span>
+<input id="vol" type="range" min="0" max="100" value="70" />
+</div>
+</div>
+</div>
+
+<div class="help">
+Tip: This uses YouTube embeds, so it works where YouTube is allowed. Some videos can’t be embedded (copyright/age settings).
+</div>
+</div>
+</section>
+
+<aside class="card">
+<div class="cardPad">
+<div class="queueHeader">
+<div style="font-weight:800;">Queue</div>
+<div class="row">
+<button id="btnSave">Save</button>
+<button id="btnLoad">Load</button>
+<button class="danger" id="btnClear">Clear</button>
+</div>
+</div>
+
+<ul id="q"></ul>
+<div class="help">
+Click a queue item to play it. Remove with ✕.<br/>
+Saved locally in your browser (localStorage).
+</div>
+</div>
+</aside>
+</main>
+
+<script src="https://www.youtube.com/iframe_api"></script>
+<script>
+let player;
+let queue = [];
+
+const $ = (id) => document.getElementById(id);
+
+function extractId(text){
+text = (text || "").trim();
+if (!text) return "";
+if (/^[a-zA-Z0-9_-]{11}$/.test(text)) return text;
+
+const patterns = [
+/v=([a-zA-Z0-9_-]{11})/,
+/youtu\.be\/([a-zA-Z0-9_-]{11})/,
+/embed\/([a-zA-Z0-9_-]{11})/,
+/shorts\/([a-zA-Z0-9_-]{11})/
+];
+for (const re of patterns){
+const m = text.match(re);
+if (m) return m[1];
+}
+return "";
+}
+
+function fmtTime(s){
+s = Math.max(0, Math.floor(s || 0));
+const m = Math.floor(s/60);
+const r = String(s%60).padStart(2,"0");
+return `${m}:${r}`;
+}
+
+async function getMeta(videoId){
+// No API key: use oEmbed
+try{
+const url = `https://www.youtube.com/oembed?format=json&url=${encodeURIComponent("https://www.youtube.com/watch?v="+videoId)}`;
+const res = await fetch(url);
+if (!res.ok) throw new Error("oEmbed blocked");
+const j = await res.json();
+return {
+title: j.title || videoId,
+author: j.author_name || "YouTube",
+thumb: (j.thumbnail_url || `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`)
+};
+}catch{
+return {
+title: videoId,
+author: "YouTube",
+thumb: `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`
+};
+}
+}
+
+function saveQueue(){
+localStorage.setItem("tubetunes_queue_v1", JSON.stringify(queue));
+}
+function loadQueue(){
+try{
+const raw = localStorage.getItem("tubetunes_queue_v1");
+queue = raw ? JSON.parse(raw) : [];
+if (!Array.isArray(queue)) queue = [];
+}catch{ queue = []; }
+renderQueue();
+}
+
+async function renderQueue(){
+const ul = $("q");
+ul.innerHTML = "";
+for (let i=0;i<queue.length;i++){
+const id = queue[i];
+const meta = await getMeta(id);
+
+const li = document.createElement("li");
+
+const img = document.createElement("img");
+img.className = "qthumb";
+img.src = meta.thumb;
+img.alt = "thumb";
+
+const mid = document.createElement("div");
+const t = document.createElement("div");
+t.className = "qtitle";
+t.textContent = meta.title;
+const sid = document.createElement("div");
+sid.className = "qid";
+sid.textContent = id;
+mid.appendChild(t);
+mid.appendChild(sid);
+
+const right = document.createElement("div");
+right.className = "row";
+
+const play = document.createElement("span");
+play.className = "pill";
+play.textContent = (i===0) ? "UP NEXT" : "PLAY";
+play.style.cursor = "pointer";
+play.onclick = () => {
+const chosen = queue.splice(i,1)[0];
+queue.unshift(chosen);
+saveQueue();
+renderQueue();
+playFromQueue();
+};
+
+const del = document.createElement("span");
+del.className = "pill";
+del.textContent = "✕";
+del.style.cursor = "pointer";
+del.onclick = (e) => {
+e.stopPropagation();
+queue.splice(i,1);
+saveQueue();
+renderQueue();
+};
+
+right.appendChild(play);
+right.appendChild(del);
+
+li.appendChild(img);
+li.appendChild(mid);
+li.appendChild(right);
+
+ul.appendChild(li);
+}
+}
+
+async function setNowPlaying(id){
+const meta = await getMeta(id);
+$("nowTitle").textContent = meta.title;
+$("nowMeta").textContent = `by ${meta.author} • ${id}`;
+$("nowThumb").src = meta.thumb;
+}
+
+function addToQueue(){
+const id = extractId($("inp").value);
+if (!id) return alert("Couldn’t read a video ID from that link.");
+queue.push(id);
+$("inp").value = "";
+saveQueue();
+renderQueue();
+}
+
+function playNow(){
+const id = extractId($("inp").value);
+if (!id) return alert("Couldn’t read a video ID from that link.");
+queue.unshift(id);
+$("inp").value = "";
+saveQueue();
+renderQueue();
+playFromQueue();
+}
+
+function playFromQueue(){
+if (!queue.length) return alert("Queue is empty.");
+const id = queue[0];
+player.loadVideoById(id);
+setNowPlaying(id);
+}
+
+function nextTrack(){
+if (!queue.length) return;
+queue.shift();
+saveQueue();
+renderQueue();
+if (queue.length) playFromQueue();
+else {
+$("nowTitle").textContent = "—";
+$("nowMeta").textContent = "—";
+$("nowThumb").removeAttribute("src");
+$("fill").style.width = "0%";
+$("tCur").textContent = "0:00";
+$("tDur").textContent = "0:00";
+}
+}
+
+function togglePlay(){
+if (!player) return;
+const state = player.getPlayerState();
+if (state === 1) player.pauseVideo();
+else player.playVideo();
+}
+
+function onYouTubeIframeAPIReady(){
+loadQueue();
+const first = queue[0] || "dQw4w9WgXcQ";
+
+player = new YT.Player("player", {
+videoId: first,
+playerVars: { autoplay: 0, controls: 1, rel: 0 },
+events: {
+onReady: () => {
+setNowPlaying(first);
+player.setVolume(Number($("vol").value || 70));
+},
+onStateChange: (e) => {
+if (e.data === YT.PlayerState.ENDED) nextTrack();
+}
+}
+});
+}
+
+// Progress updates
+setInterval(() => {
+if (!player || typeof player.getCurrentTime !== "function") return;
+const cur = player.getCurrentTime();
+const dur = player.getDuration ? player.getDuration() : 0;
+$("tCur").textContent = fmtTime(cur);
+$("tDur").textContent = fmtTime(dur);
+const pct = dur > 0 ? (cur / dur) * 100 : 0;
+$("fill").style.width = `${Math.min(100, Math.max(0, pct))}%`;
+}, 250);
+
+// Click-to-seek
+$("progress").addEventListener("click", (ev) => {
+if (!player) return;
+const rect = ev.currentTarget.getBoundingClientRect();
+const x = ev.clientX - rect.left;
+const ratio = x / rect.width;
+const dur = player.getDuration ? player.getDuration() : 0;
+if (dur > 0) player.seekTo(dur * ratio, true);
+});
+
+// Volume
+$("vol").addEventListener("input", () => {
+if (!player) return;
+player.setVolume(Number($("vol").value || 70));
+});
+
+// Buttons
+$("btnAdd").onclick = addToQueue;
+$("btnPlay").onclick = playNow;
+$("btnToggle").onclick = togglePlay;
+$("btnNext").onclick = nextTrack;
+$("btnSave").onclick = () => { saveQueue(); alert("Saved."); };
+$("btnLoad").onclick = () => { loadQueue(); alert("Loaded."); };
+$("btnClear").onclick = () => {
+if (!confirm("Clear the whole queue?")) return;
+queue = [];
+saveQueue();
+renderQueue();
+};
+
+// Keyboard shortcuts
+document.addEventListener("keydown", (e) => {
+const tag = (e.target && e.target.tagName) ? e.target.tagName.toLowerCase() : "";
+if (tag === "input" || tag === "textarea") return;
+
+if (e.code === "Space") { e.preventDefault(); togglePlay(); }
+if (e.key.toLowerCase() === "n") nextTrack();
+if (e.key === "ArrowRight" && player) player.seekTo(player.getCurrentTime() + 10, true);
+if (e.key === "ArrowLeft" && player) player.seekTo(Math.max(0, player.getCurrentTime() - 10), true);
+});
+</script>
+</body>
+</html>
